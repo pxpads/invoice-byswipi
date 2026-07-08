@@ -198,15 +198,6 @@ table.inv-table{ width:100%; border-collapse:collapse; margin-bottom:8px; }
 .inv-footer{ margin-top:40px; padding-top:20px; border-top:1px solid var(--line); display:grid; grid-template-columns:1.2fr 1fr; gap:24px; }
 .inv-footer h4{ font-family:var(--f-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--signal-deep); margin-bottom:6px; }
 .inv-footer p{ font-size:12.5px; color:var(--ink-soft); white-space:pre-line; line-height:1.6; }
-.inv-status{
-  display:inline-block; margin-top:16px;
-  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
-  padding:6px 12px; border-radius:20px; background:var(--signal-soft); color:var(--signal-deep);
-  line-height:1;
-}
-.inv-status .d{ display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--signal); margin-right:6px; vertical-align:middle; }
-.inv-status span:last-child{ vertical-align:middle; }
-
 .inv-bottom-brand{
   margin-top:36px; text-align:center; font-family:var(--f-mono); font-size:10px; letter-spacing:.12em;
   text-transform:uppercase; color:var(--line-strong);
@@ -268,13 +259,6 @@ table.inv-table{ width:100%; border-collapse:collapse; margin-bottom:8px; }
         <div class="field"><label>Tanggal Terbit</label><input type="date" id="invDate"></div>
         <div class="field"><label>Jatuh Tempo</label><input type="date" id="dueDate"></div>
       </div>
-      <div class="field"><label>Status</label>
-        <select id="status">
-          <option value="Belum Dibayar">Belum Dibayar</option>
-          <option value="DP Diterima">DP Diterima</option>
-          <option value="Lunas">Lunas</option>
-        </select>
-      </div>
     </div>
 
     <div class="group">
@@ -297,8 +281,9 @@ table.inv-table{ width:100%; border-collapse:collapse; margin-bottom:8px; }
       <span class="eyebrow">Catatan</span>
       <h3>Catatan & Pembayaran</h3>
       <div class="field"><textarea id="notes">Pembayaran dapat ditransfer ke:
-Bank JAGO 509971045135 a.n. Abizar Egi Mahendra
-Bank BCA 6720794592 a.n. Abizar Egi Mahendra
+Bank JAGO 509971045135
+Bank BCA 6720794592
+a.n. Abizar Egi Mahendra
 
 Terima kasih atas kepercayaan Anda.</textarea></div>
     </div>
@@ -360,8 +345,6 @@ Terima kasih atas kepercayaan Anda.</textarea></div>
           <tr class="grand"><td>Total</td><td class="val" id="pvGrand">Rp 0</td></tr>
         </table>
       </div>
-
-      <span class="inv-status"><span class="d"></span><span id="pvStatus">Belum Dibayar</span></span>
 
       <div class="inv-footer">
         <div>
@@ -465,7 +448,6 @@ Terima kasih atas kepercayaan Anda.</textarea></div>
     document.getElementById('pvInvNum').textContent = document.getElementById('invNum').value || 'INV-0001';
     document.getElementById('pvInvDate').textContent = formatDate(document.getElementById('invDate').value);
     document.getElementById('pvDueDate').textContent = formatDate(document.getElementById('dueDate').value);
-    document.getElementById('pvStatus').textContent = document.getElementById('status').value;
     document.getElementById('pvNotes').textContent = document.getElementById('notes').value;
 
     var tbody = document.getElementById('pvItems');
@@ -505,7 +487,7 @@ Terima kasih atas kepercayaan Anda.</textarea></div>
   }
 
   // bind all top-level fields
-  ['fromName','fromAddr','toName','toAddr','invNum','currency','invDate','dueDate','status','taxPct','discPct','notes']
+  ['fromName','fromAddr','toName','toAddr','invNum','currency','invDate','dueDate','taxPct','discPct','notes']
     .forEach(function(id){
       document.getElementById(id).addEventListener('input', render);
       document.getElementById(id).addEventListener('change', render);
