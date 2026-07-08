@@ -266,7 +266,13 @@ table.inv-table{ width:100%; border-collapse:collapse; margin-bottom:8px; }
         <div class="field"><label>Tanggal Terbit</label><input type="date" id="invDate"></div>
         <div class="field"><label>Jatuh Tempo</label><input type="date" id="dueDate"></div>
       </div>
-     
+      <div class="field"><label>Status</label>
+        <select id="status">
+          <option value="Belum Dibayar">Belum Dibayar</option>
+          <option value="DP Diterima">DP Diterima</option>
+          <option value="Lunas">Lunas</option>
+        </select>
+      </div>
     </div>
 
     <div class="group">
@@ -352,6 +358,8 @@ Terima kasih atas kepercayaan Anda.</textarea></div>
           <tr class="grand"><td>Total</td><td class="val" id="pvGrand">Rp 0</td></tr>
         </table>
       </div>
+
+      <span class="inv-status"><span class="d"></span><span id="pvStatus">Belum Dibayar</span></span>
 
       <div class="inv-footer">
         <div>
