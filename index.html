@@ -281,9 +281,8 @@ table.inv-table{ width:100%; border-collapse:collapse; margin-bottom:8px; }
       <span class="eyebrow">Catatan</span>
       <h3>Catatan & Pembayaran</h3>
       <div class="field"><textarea id="notes">Pembayaran dapat ditransfer ke:
-Bank JAGO 509971045135
-Bank BCA 6720794592
-a.n. Abizar Egi Mahendra
+Bank JAGO 509971045135 a.n. Abizar Egi Mahendra
+Bank BCA 6720794592 a.n. Abizar Egi Mahendra
 
 Terima kasih atas kepercayaan Anda.</textarea></div>
     </div>
@@ -520,21 +519,21 @@ Terima kasih atas kepercayaan Anda.</textarea></div>
     ready.then(function(){
       return html2canvas(invEl, {scale:2, backgroundColor:'#ffffff', useCORS:true});
     }).then(function(canvas){
-      var imgData = canvas.toDataURL('image/png');
+      var imgData = canvas.toDataURL('image/jpeg', 0.92);
       var jsPDFCtor = window.jspdf.jsPDF;
-      var pdf = new jsPDFCtor('p', 'mm', 'a4');
+      var pdf = new jsPDFCtor('p', 'mm', 'a4', true);
       var pageWidth = 210;
       var pageHeight = 297;
       var imgWidth = pageWidth;
       var imgHeight = canvas.height * imgWidth / canvas.width;
       var heightLeft = imgHeight;
       var position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
       while(heightLeft > 0){
         position = heightLeft - imgHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
       }
       var fname = (document.getElementById('invNum').value || 'invoice').replace(/[^a-z0-9\-]/gi,'_');
