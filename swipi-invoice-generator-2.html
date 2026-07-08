@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SWIPI — Invoice Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --ink:#0B0C0E;
+  --ink-soft:#34322E;
+  --paper:#F5F3EF;
+  --surface:#FFFFFF;
+  --line:#E1DDD3;
+  --line-strong:#CFC9BC;
+  --muted:#78746C;
+  --signal:#1F7A5C;
+  --signal-deep:#12503B;
+  --signal-soft:#E7EFE9;
+  --signal-ink:#0F3D2C;
+
+  --f-display:'Instrument Serif', Georgia, serif;
+  --f-head:'Inter Tight', -apple-system, sans-serif;
+  --f-body:'Inter', -apple-system, sans-serif;
+  --f-mono:'IBM Plex Mono', monospace;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  font-family:var(--f-body);
+  background:var(--paper);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  line-height:1.5;
+  min-height:100vh;
+}
+img,svg{display:block; max-width:100%;}
+button{font-family:inherit; cursor:pointer;}
+input,textarea{font-family:inherit;}
+
+/* ===== TOP BAR ===== */
+.topbar{
+  position:sticky; top:0; z-index:100;
+  background:var(--ink); color:var(--paper);
+  padding:16px clamp(16px,4vw,32px);
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+}
+.brandmark{display:flex; align-items:center; gap:10px; font-family:var(--f-head); font-weight:800; font-size:16px; letter-spacing:-0.01em;}
+.brandmark .dot{width:8px;height:8px;border-radius:50%;background:var(--signal);}
+.topbar-actions{display:flex; gap:10px; align-items:center;}
+.btn{
+  font-family:var(--f-mono); font-size:11.5px; letter-spacing:.06em; text-transform:uppercase;
+  padding:11px 18px; border-radius:6px; border:1px solid transparent;
+  transition:all .2s ease; white-space:nowrap;
+}
+.btn-primary{ background:var(--signal); color:#fff; }
+.btn-primary:hover{ background:var(--signal-deep); }
+.btn-primary:disabled{ opacity:.55; cursor:wait; }
+.btn-ghost{ background:transparent; color:var(--paper); border-color:rgba(245,243,239,0.25); }
+.btn-ghost:hover{ border-color:rgba(245,243,239,0.55); }
+
+/* ===== LAYOUT ===== */
+.app{
+  max-width:1320px; margin:0 auto;
+  display:grid; grid-template-columns:minmax(320px,420px) 1fr;
+  gap:0;
+  align-items:start;
+}
+@media (max-width:980px){
+  .app{grid-template-columns:1fr;}
+}
+
+/* ===== FORM PANEL ===== */
+.panel{
+  padding:clamp(20px,3vw,36px);
+  border-right:1px solid var(--line);
+}
+@media (max-width:980px){ .panel{border-right:none; border-bottom:1px solid var(--line);} }
+
+.eyebrow{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--signal-deep); display:flex; align-items:center; gap:8px; margin-bottom:6px;
+}
+.eyebrow::before{ content:""; width:14px; height:1px; background:var(--signal); }
+
+.group{ margin-bottom:28px; }
+.group h3{
+  font-family:var(--f-head); font-weight:700; font-size:14px; letter-spacing:-0.01em;
+  margin-bottom:14px; color:var(--ink);
+}
+.field{ margin-bottom:12px; }
+.field label{
+  display:block; font-family:var(--f-mono); font-size:10.5px; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:5px;
+}
+.field input, .field textarea, .field select{
+  width:100%; padding:10px 12px; border:1px solid var(--line-strong); border-radius:6px;
+  background:var(--surface); color:var(--ink); font-size:14px;
+  transition:border-color .15s;
+}
+.field input:focus, .field textarea:focus, .field select:focus{
+  outline:none; border-color:var(--signal);
+}
+.field textarea{ resize:vertical; min-height:56px; }
+.field-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+/* items */
+.item-row{
+  border:1px solid var(--line); border-radius:8px; padding:12px; margin-bottom:10px; background:var(--surface);
+  position:relative;
+}
+.item-row .field-row-3{ display:grid; grid-template-columns:1fr 70px 100px; gap:8px; margin-top:8px; }
+.item-remove{
+  position:absolute; top:8px; right:8px; width:22px; height:22px; border-radius:50%;
+  background:var(--paper); border:1px solid var(--line-strong); color:var(--muted);
+  display:flex; align-items:center; justify-content:center; font-size:13px; line-height:1;
+}
+.item-remove:hover{ background:#F4E4E0; color:#B4432E; border-color:#E3B7AC; }
+.add-item{
+  width:100%; padding:11px; border:1px dashed var(--line-strong); border-radius:8px;
+  background:transparent; color:var(--signal-deep); font-family:var(--f-mono); font-size:11.5px;
+  letter-spacing:.06em; text-transform:uppercase;
+}
+.add-item:hover{ background:var(--signal-soft); border-color:var(--signal); }
+
+.field-row-2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+/* ===== PREVIEW PANEL ===== */
+.preview-wrap{
+  padding:clamp(20px,3vw,36px);
+  display:flex; justify-content:center;
+  background:
+    linear-gradient(135deg, transparent 24px, var(--paper) 0) top left,
+    linear-gradient(-45deg, transparent 24px, var(--paper) 0) top right;
+}
+
+#invoice{
+  width:100%; max-width:760px; background:var(--surface);
+  box-shadow:0 1px 3px rgba(11,12,14,0.06), 0 12px 32px rgba(11,12,14,0.08);
+  padding:clamp(28px,5vw,64px);
+  font-family:var(--f-body);
+  color:var(--ink);
+}
+.inv-head{
+  display:flex; justify-content:space-between; align-items:flex-start; gap:20px;
+  padding-bottom:28px; border-bottom:2px solid var(--ink); margin-bottom:28px;
+}
+.inv-brand{ display:flex; align-items:center; gap:10px; }
+.inv-brand-mark{
+  width:34px; height:34px; border-radius:8px; background:var(--ink);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.inv-brand-mark span{ color:var(--signal); font-family:var(--f-head); font-weight:800; font-size:16px; }
+.inv-brand-name{ font-family:var(--f-head); font-weight:800; font-size:19px; letter-spacing:-0.01em; }
+.inv-brand-tag{ font-family:var(--f-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-top:2px; }
+.inv-title{ text-align:right; }
+.inv-title h1{
+  font-family:var(--f-display); font-style:italic; font-weight:400; font-size:34px; color:var(--signal-deep);
+  letter-spacing:-0.01em;
+}
+.inv-title .inv-num{ font-family:var(--f-mono); font-size:12px; color:var(--muted); margin-top:4px; }
+
+.inv-meta{ display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:32px; }
+.inv-meta .block h4{
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--signal-deep);
+  margin-bottom:8px;
+}
+.inv-meta .block .name{ font-weight:600; font-size:14.5px; margin-bottom:3px; }
+.inv-meta .block p{ font-size:13px; color:var(--ink-soft); white-space:pre-line; line-height:1.55; }
+.inv-dates{ display:flex; gap:28px; margin-top:14px; }
+.inv-dates div span{ display:block; font-family:var(--f-mono); font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.inv-dates div strong{ font-size:13.5px; font-weight:600; }
+
+table.inv-table{ width:100%; border-collapse:collapse; margin-bottom:8px; }
+.inv-table thead th{
+  text-align:left; font-family:var(--f-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--signal-deep); padding:0 0 10px; border-bottom:1.5px solid var(--ink);
+}
+.inv-table thead th.num{ text-align:right; }
+.inv-table tbody td{
+  padding:12px 0; border-bottom:1px solid var(--line); font-size:13.5px; vertical-align:top;
+}
+.inv-table tbody td.num{ text-align:right; font-family:var(--f-mono); font-size:13px; white-space:nowrap; }
+.inv-table tbody td.desc-name{ font-weight:600; }
+.inv-table tbody td.desc-sub{ color:var(--muted); font-size:12px; margin-top:2px; }
+
+.inv-totals{ display:flex; justify-content:flex-end; margin-top:18px; }
+.inv-totals table{ width:280px; border-collapse:collapse; }
+.inv-totals td{ padding:6px 0; font-size:13.5px; }
+.inv-totals td.label{ color:var(--muted); }
+.inv-totals td.val{ text-align:right; font-family:var(--f-mono); }
+.inv-totals tr.grand td{ border-top:2px solid var(--ink); padding-top:12px; font-weight:800; font-size:16px; color:var(--signal-deep); }
+.inv-totals tr.grand td.val{ font-family:var(--f-head); }
+
+.inv-footer{ margin-top:40px; padding-top:20px; border-top:1px solid var(--line); display:grid; grid-template-columns:1.2fr 1fr; gap:24px; }
+.inv-footer h4{ font-family:var(--f-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--signal-deep); margin-bottom:6px; }
+.inv-footer p{ font-size:12.5px; color:var(--ink-soft); white-space:pre-line; line-height:1.6; }
+.inv-status{
+  display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+  font-family:var(--f-mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+  padding:6px 12px; border-radius:20px; background:var(--signal-soft); color:var(--signal-deep);
+}
+.inv-status .d{ width:6px; height:6px; border-radius:50%; background:var(--signal); }
+
+.inv-bottom-brand{
+  margin-top:36px; text-align:center; font-family:var(--f-mono); font-size:10px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--line-strong);
+}
+
+@media print{
+  .topbar, .panel{ display:none !important; }
+  .preview-wrap{ padding:0; background:none; }
+  .app{ display:block; }
+  #invoice{ box-shadow:none; max-width:100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brandmark">
+    <svg width="10" height="12" viewBox="0 0 16 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9.5 0L1 10.5H6.5L5 18L15 6.5H9L9.5 0Z" fill="var(--signal)"/>
+    </svg>
+    SWIPI — Invoice Generator
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-ghost" id="resetBtn">Reset</button>
+    <button class="btn btn-primary" id="exportBtn">Export PDF</button>
+  </div>
+</div>
+
+<div class="app">
+  <!-- ============ FORM PANEL ============ -->
+  <div class="panel">
+
+    <div class="group">
+      <span class="eyebrow">Dari</span>
+      <h3>Informasi Pengirim</h3>
+      <div class="field"><label>Nama Bisnis</label><input id="fromName" value="SWIPI"></div>
+      <div class="field"><label>Alamat / Kontak</label><textarea id="fromAddr">swipi.studio@gmail.com
+08567876751</textarea></div>
+    </div>
+
+    <div class="group">
+      <span class="eyebrow">Kepada</span>
+      <h3>Informasi Klien</h3>
+      <div class="field"><label>Nama Klien / Perusahaan</label><input id="toName" placeholder="Nama klien"></div>
+      <div class="field"><label>Alamat / Kontak</label><textarea id="toAddr" placeholder="Alamat, email, no. telepon"></textarea></div>
+    </div>
+
+    <div class="group">
+      <span class="eyebrow">Detail</span>
+      <h3>Detail Invoice</h3>
+      <div class="field-row">
+        <div class="field"><label>No. Invoice</label><input id="invNum" value="INV-0001"></div>
+        <div class="field"><label>Mata Uang</label>
+          <select id="currency">
+            <option value="IDR" selected>IDR (Rp)</option>
+            <option value="USD">USD ($)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Tanggal Terbit</label><input type="date" id="invDate"></div>
+        <div class="field"><label>Jatuh Tempo</label><input type="date" id="dueDate"></div>
+      </div>
+      <div class="field"><label>Status</label>
+        <select id="status">
+          <option value="Belum Dibayar">Belum Dibayar</option>
+          <option value="DP Diterima">DP Diterima</option>
+          <option value="Lunas">Lunas</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="group">
+      <span class="eyebrow">Item</span>
+      <h3>Rincian Layanan</h3>
+      <div id="itemsList"></div>
+      <button class="add-item" id="addItemBtn">+ Tambah Item</button>
+    </div>
+
+    <div class="group">
+      <span class="eyebrow">Penyesuaian</span>
+      <h3>Pajak & Diskon</h3>
+      <div class="field-row-2">
+        <div class="field"><label>Pajak (%)</label><input type="number" id="taxPct" value="0" min="0" step="0.1"></div>
+        <div class="field"><label>Diskon (%)</label><input type="number" id="discPct" value="0" min="0" step="0.1"></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <span class="eyebrow">Catatan</span>
+      <h3>Catatan & Pembayaran</h3>
+      <div class="field"><textarea id="notes">Pembayaran dapat ditransfer ke:
+Bank JAGO 509971045135 a.n. Abizar Egi Mahendra
+Bank BCA 6720794592 a.n. Abizar Egi Mahendra
+
+Terima kasih atas kepercayaan Anda.</textarea></div>
+    </div>
+
+  </div>
+
+  <!-- ============ PREVIEW PANEL ============ -->
+  <div class="preview-wrap">
+    <div id="invoice">
+      <div class="inv-head">
+        <div class="inv-brand">
+          <div class="inv-brand-mark">
+            <svg width="16" height="18" viewBox="0 0 16 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9.5 0L1 10.5H6.5L5 18L15 6.5H9L9.5 0Z" fill="var(--signal)"/>
+            </svg>
+          </div>
+          <div>
+            <div class="inv-brand-name" id="pvFromName">SWIPI</div>
+            <div class="inv-brand-tag">Engineering Growth Interfaces</div>
+          </div>
+        </div>
+        <div class="inv-title">
+          <h1>Invoice</h1>
+          <div class="inv-num" id="pvInvNum">INV-0001</div>
+        </div>
+      </div>
+
+      <div class="inv-meta">
+        <div class="block">
+          <h4>Ditagihkan Kepada</h4>
+          <div class="name" id="pvToName">—</div>
+          <p id="pvToAddr"></p>
+        </div>
+        <div class="block">
+          <h4>Dari</h4>
+          <p id="pvFromAddr"></p>
+          <div class="inv-dates">
+            <div><span>Tanggal Terbit</span><strong id="pvInvDate">—</strong></div>
+            <div><span>Jatuh Tempo</span><strong id="pvDueDate">—</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th>Deskripsi</th>
+            <th class="num">Qty</th>
+            <th class="num">Harga</th>
+            <th class="num">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody id="pvItems"></tbody>
+      </table>
+
+      <div class="inv-totals">
+        <table>
+          <tr><td class="label">Subtotal</td><td class="val" id="pvSubtotal">Rp 0</td></tr>
+          <tr id="pvDiscRow" style="display:none;"><td class="label">Diskon</td><td class="val" id="pvDisc">Rp 0</td></tr>
+          <tr id="pvTaxRow" style="display:none;"><td class="label">Pajak</td><td class="val" id="pvTax">Rp 0</td></tr>
+          <tr class="grand"><td>Total</td><td class="val" id="pvGrand">Rp 0</td></tr>
+        </table>
+      </div>
+
+      <span class="inv-status"><span class="d"></span><span id="pvStatus">Belum Dibayar</span></span>
+
+      <div class="inv-footer">
+        <div>
+          <h4>Catatan</h4>
+          <p id="pvNotes"></p>
+        </div>
+        <div>
+          <h4>Kontak</h4>
+          <p id="pvFromAddr2"></p>
+        </div>
+      </div>
+
+      <div class="inv-bottom-brand">Generated by SWIPI · Engineering Growth Interfaces</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var itemsList = document.getElementById('itemsList');
+  var itemId = 0;
+
+  function currencySymbol(){ return document.getElementById('currency').value === 'USD' ? '$' : 'Rp'; }
+
+  function formatMoney(n){
+    n = isNaN(n) ? 0 : n;
+    var cur = document.getElementById('currency').value;
+    if(cur === 'USD'){
+      return '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+    return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+  }
+
+  function formatDate(str){
+    if(!str) return '—';
+    var d = new Date(str + 'T00:00:00');
+    if(isNaN(d)) return '—';
+    return d.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+  }
+
+  function addItem(name, qty, price){
+    itemId++;
+    var row = document.createElement('div');
+    row.className = 'item-row';
+    row.dataset.id = itemId;
+    row.innerHTML =
+      '<button class="item-remove" title="Hapus item">×</button>' +
+      '<div class="field"><label>Nama Item</label><input class="it-name" placeholder="cth. Meta Ads Full Service" value="'+(name||'')+'"></div>' +
+      '<div class="field-row-3">' +
+        '<div class="field" style="margin-bottom:0;"><label>Ket. Singkat</label><input class="it-desc" placeholder="opsional"></div>' +
+        '<div class="field" style="margin-bottom:0;"><label>Qty</label><input class="it-qty" type="number" min="0" step="1" value="'+(qty!=null?qty:1)+'"></div>' +
+        '<div class="field" style="margin-bottom:0;"><label>Harga</label><input class="it-price" type="number" min="0" step="1000" value="'+(price!=null?price:0)+'"></div>' +
+      '</div>';
+    itemsList.appendChild(row);
+    row.querySelector('.item-remove').addEventListener('click', function(){
+      row.remove(); render();
+    });
+    row.querySelectorAll('input').forEach(function(inp){
+      inp.addEventListener('input', render);
+    });
+  }
+
+  document.getElementById('addItemBtn').addEventListener('click', function(){
+    addItem('', 1, 0);
+    render();
+  });
+
+  function calcTotals(){
+    var rows = itemsList.querySelectorAll('.item-row');
+    var subtotal = 0;
+    var items = [];
+    rows.forEach(function(r){
+      var name = r.querySelector('.it-name').value || 'Item';
+      var desc = r.querySelector('.it-desc').value || '';
+      var qty = parseFloat(r.querySelector('.it-qty').value) || 0;
+      var price = parseFloat(r.querySelector('.it-price').value) || 0;
+      var sub = qty * price;
+      subtotal += sub;
+      items.push({name:name, desc:desc, qty:qty, price:price, sub:sub});
+    });
+    var discPct = parseFloat(document.getElementById('discPct').value) || 0;
+    var taxPct = parseFloat(document.getElementById('taxPct').value) || 0;
+    var discAmt = subtotal * (discPct/100);
+    var taxable = subtotal - discAmt;
+    var taxAmt = taxable * (taxPct/100);
+    var grand = taxable + taxAmt;
+    return {items:items, subtotal:subtotal, discAmt:discAmt, taxAmt:taxAmt, grand:grand, discPct:discPct, taxPct:taxPct};
+  }
+
+  function render(){
+    var f = calcTotals();
+
+    document.getElementById('pvFromName').textContent = document.getElementById('fromName').value || 'Nama Bisnis';
+    var fromAddr = document.getElementById('fromAddr').value;
+    document.getElementById('pvFromAddr').textContent = fromAddr;
+    document.getElementById('pvFromAddr2').textContent = fromAddr;
+
+    document.getElementById('pvToName').textContent = document.getElementById('toName').value || 'Nama Klien';
+    document.getElementById('pvToAddr').textContent = document.getElementById('toAddr').value;
+
+    document.getElementById('pvInvNum').textContent = document.getElementById('invNum').value || 'INV-0001';
+    document.getElementById('pvInvDate').textContent = formatDate(document.getElementById('invDate').value);
+    document.getElementById('pvDueDate').textContent = formatDate(document.getElementById('dueDate').value);
+    document.getElementById('pvStatus').textContent = document.getElementById('status').value;
+    document.getElementById('pvNotes').textContent = document.getElementById('notes').value;
+
+    var tbody = document.getElementById('pvItems');
+    tbody.innerHTML = '';
+    if(f.items.length === 0){
+      tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted); font-style:italic;">Belum ada item</td></tr>';
+    } else {
+      f.items.forEach(function(it){
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td><div class="desc-name">'+escapeHtml(it.name)+'</div>'+(it.desc?'<div class="desc-sub">'+escapeHtml(it.desc)+'</div>':'')+'</td>' +
+          '<td class="num">'+it.qty+'</td>' +
+          '<td class="num">'+formatMoney(it.price)+'</td>' +
+          '<td class="num">'+formatMoney(it.sub)+'</td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById('pvSubtotal').textContent = formatMoney(f.subtotal);
+    var discRow = document.getElementById('pvDiscRow');
+    var taxRow = document.getElementById('pvTaxRow');
+    if(f.discPct > 0){
+      discRow.style.display = '';
+      document.getElementById('pvDisc').textContent = '- ' + formatMoney(f.discAmt) + ' (' + f.discPct + '%)';
+    } else { discRow.style.display = 'none'; }
+    if(f.taxPct > 0){
+      taxRow.style.display = '';
+      document.getElementById('pvTax').textContent = formatMoney(f.taxAmt) + ' (' + f.taxPct + '%)';
+    } else { taxRow.style.display = 'none'; }
+    document.getElementById('pvGrand').textContent = formatMoney(f.grand);
+  }
+
+  function escapeHtml(s){
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // bind all top-level fields
+  ['fromName','fromAddr','toName','toAddr','invNum','currency','invDate','dueDate','status','taxPct','discPct','notes']
+    .forEach(function(id){
+      document.getElementById(id).addEventListener('input', render);
+      document.getElementById(id).addEventListener('change', render);
+    });
+
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    if(!confirm('Reset semua isian ke kondisi awal?')) return;
+    document.getElementById('fromName').value = 'SWIPI';
+    document.getElementById('fromAddr').value = 'swipi.studio@gmail.com\n08567876751';
+    document.getElementById('toName').value = '';
+    document.getElementById('toAddr').value = '';
+    document.getElementById('invNum').value = 'INV-0001';
+    document.getElementById('currency').value = 'IDR';
+    document.getElementById('taxPct').value = 0;
+    document.getElementById('discPct').value = 0;
+    document.getElementById('notes').value = 'Pembayaran dapat ditransfer ke:\nBank JAGO 509971045135 a.n. Abizar Egi Mahendra\nBank BCA 6720794592 a.n. Abizar Egi Mahendra\n\nTerima kasih atas kepercayaan Anda.';
+    itemsList.innerHTML = '';
+    addItem('Meta Ads Full Service', 1, 3500000);
+    setDefaultDates();
+    render();
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    var btn = this;
+    var original = btn.textContent;
+    btn.textContent = 'Menyiapkan...';
+    btn.disabled = true;
+    var invEl = document.getElementById('invoice');
+    html2canvas(invEl, {scale:2, backgroundColor:'#ffffff', useCORS:true}).then(function(canvas){
+      var imgData = canvas.toDataURL('image/png');
+      var jsPDFCtor = window.jspdf.jsPDF;
+      var pdf = new jsPDFCtor('p', 'mm', 'a4');
+      var pageWidth = 210;
+      var pageHeight = 297;
+      var imgWidth = pageWidth;
+      var imgHeight = canvas.height * imgWidth / canvas.width;
+      var heightLeft = imgHeight;
+      var position = 0;
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while(heightLeft > 0){
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      var fname = (document.getElementById('invNum').value || 'invoice').replace(/[^a-z0-9\-]/gi,'_');
+      pdf.save(fname + '.pdf');
+      btn.textContent = original;
+      btn.disabled = false;
+    }).catch(function(err){
+      console.error(err);
+      alert('Gagal membuat PDF. Coba lagi.');
+      btn.textContent = original;
+      btn.disabled = false;
+    });
+  });
+
+  function setDefaultDates(){
+    var today = new Date();
+    var due = new Date();
+    due.setDate(due.getDate() + 7);
+    document.getElementById('invDate').value = today.toISOString().slice(0,10);
+    document.getElementById('dueDate').value = due.toISOString().slice(0,10);
+  }
+
+  // init
+  setDefaultDates();
+  addItem('Meta Ads Full Service', 1, 3500000);
+  addItem('Konten Carousel (4 post)', 4, 250000);
+  render();
+})();
+</script>
+</body>
+</html>
